@@ -3,12 +3,12 @@ MUST INSTALL 7zip prior to backing up, restoring will install 7zip prior to extr
 Run powershell in elevated mode.
 .EXAMPLE
 Runs script and performs disable/delete
-configBackups.ps1 -action backup -whatif
+configBackups.ps1 -action backup
 .EXAMPLE
 Performs restore
-configBackups.ps1 -action restore -whatif
+configBackups.ps1 -action restore
 #>
-[CmdletBinding(SupportsShouldProcess)]
+[CmdletBinding()]
 param
 (
    [Parameter(Mandatory=$true)]
@@ -44,10 +44,11 @@ try{
             $appDirs.GetEnumerator() | ForEach-Object{
                 # deletes any backup zip older than 14 days.
                 Get-ChildItem -path "$backupDir\$($_.Key)*" | Sort-object -Property LastWriteTime | Where-Object {LastWriteTime -gt (Get-Date).AddDays(-14)} | Remove-Item -Force
+                # checks if path is present, if so perform backup
                 if(Test-Path $_.Value){
                     if($_.Key -eq "lgHub"){
                         # kills lghub processes due to file in use
-                        # Get-Process | Where-Object {$_.Name -like 'lghub*'} | Stop-Process -Force
+                        Get-Process | Where-Object {$_.Name -like 'lghub*'} | Stop-Process -Force
                     }
                 # archives targetted directories
                 & $7z a "$backupDir\$($_.Key)_$fileDate.zip" $_.Value

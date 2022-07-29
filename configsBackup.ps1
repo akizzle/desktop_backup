@@ -39,6 +39,7 @@ $7z = "$env:ProgramFiles\7-zip\7z.exe"
 try{
     if($action -eq 'backup'){
         # choco package list backup
+        # credit for export-chocolatey.ps1 goes to https://gist.github.com/alimbada/449ddf65b4ef9752eff3
         .\export-chocolatey.ps1 > "$backupDir\packages$fileDate.config"
         pause
         if(Test-Path -path $7z){

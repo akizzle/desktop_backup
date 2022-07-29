@@ -56,7 +56,7 @@ try{
         if(Test-Path -path $7z){
             $appDirs.GetEnumerator() | ForEach-Object{
                 # deletes any backup zip older than 14 days.
-                Get-ChildItem -path "$backupDir\$($_.Key)*" | Sort-object -Property LastWriteTime | Where-Object {LastWriteTime -gt (Get-Date).AddDays(-14)} | Remove-Item -Force
+                Get-ChildItem -path "$backupDir\$($_.Key)*" | Where-Object {$_.LastWriteTime -gt (Get-Date).AddDays(-14)} | Remove-Item -Force -ErrorAction SilentlyContinue
                 # checks if path is present, if so perform backup
                 if(Test-Path $_.Value){
                     if($_.Key -eq "lgHub"){
@@ -75,13 +75,13 @@ try{
             # install 7zip to perform extraction ahead.
             choco install 7zip
             # retrieves latest package backup
-            $chocoLatest = Get-ChildItem -path "$backupDir\packages*" | Sort-Object -Property LastWriteTime | Select-Object -last 1
+            $chocoLatest = Get-ChildItem -path "$backupDir\packages*" | Sort-Object LastWriteTime | Select-Object -last 1
             # install packages
             choco install $chocoLatest -y
         }
         $appDirs.GetEnumerator() | ForEach-Object{
             # select latest backup .zip
-            $restoreZip = Get-ChildItem -path "$backupDir\$($_.Key)*" | Sort-Object -Property LastWriteTime | Select-Object -last 1
+            $restoreZip = Get-ChildItem -path "$backupDir\$($_.Key)*" | Sort-Object LastWriteTime | Select-Object -last 1
             # kills running processes so that config restores can take effect
             $proc = Get-Process -Name "$($_.Key)*"
             if($proc){

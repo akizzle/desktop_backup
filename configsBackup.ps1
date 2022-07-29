@@ -39,7 +39,8 @@ $7z = "$env:ProgramFiles\7-zip\7z.exe"
 try{
     if($action -eq 'backup'){
         # choco package list backup
-        .export-chocolatey.ps1 > "$backupDir\packages$fileDate.config"
+        .\export-chocolatey.ps1 > "$backupDir\packages$fileDate.config"
+        pause
         if(Test-Path -path $7z){
             $appDirs.GetEnumerator() | ForEach-Object{
                 # deletes any backup zip older than 14 days.

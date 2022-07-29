@@ -1,5 +1,5 @@
 <#
-MUST INSTALL 7zip prior to backing up, restoring will install 7zip prior to extraction.
+MUST INSTALL 7zip prior to backing up & restoring. If choco param is present 7zip will be installed during the restore process.
 Run powershell in elevated mode.
 .EXAMPLE
 Runs script and performs disable/delete
@@ -7,18 +7,25 @@ configBackups.ps1 -action backup
 .EXAMPLE
 Performs restore
 configBackups.ps1 -action restore
+.EXAMPLE
+If you have chocoalatey installed add the parameter -choco
+configBackups.ps1 -action backup -choco yes
 #>
 [CmdletBinding()]
 param
 (
    [Parameter(Mandatory=$true)]
    [string]
-   $action
+   $action,
+
+   [Parameter()]
+   [string]
+   $choco
 )
 
 # specify applications & directories that you want backed up or restored.
 $appDirs = @{
-    streamDeck      = "$env:USERPROFILE\AppData\Roaming\Elgato\StreamDeck\Backup"
+    streamDeck      = "$env:USERPROFILE\AppData\Roaming\Elgato\StreamDeck"
     wowInterface    = "D:\Program Files (x86)\World of Warcraft\_retail_\Interface"
     wowWTF          = "D:\Program Files (x86)\World of Warcraft\_retail_\WTF"
     iCUE            = "$env:USERPROFILE\AppData\Roaming\Corsair\CUE Backup"
@@ -38,9 +45,11 @@ $7z = "$env:ProgramFiles\7-zip\7z.exe"
 
 try{
     if($action -eq 'backup'){
-        # choco package list backup
-        # credit for export-chocolatey.ps1 goes to https://gist.github.com/alimbada/449ddf65b4ef9752eff3
-        .\export-chocolatey.ps1 > "$backupDir\packages$fileDate.config"
+        if($choco -eq 'yes'){
+            # choco package list backup
+            # credit for export-chocolatey.ps1 goes to https://gist.github.com/alimbada/449ddf65b4ef9752eff3
+            .\export-chocolatey.ps1 > "$backupDir\packages$fileDate.config"
+        }
         if(Test-Path -path $7z){
             $appDirs.GetEnumerator() | ForEach-Object{
                 # deletes any backup zip older than 14 days.
@@ -57,19 +66,29 @@ try{
             }
         }
     }elseif($action -eq 'restore'){
-        # install choco
-        Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-        # install 7zip to perform extraction ahead.
-        choco install 7zip
-        # retrieves latest package backup
-        $chocoLatest = Get-ChildItem -path "$backupDir\packages*" | Sort-Object -Property LastWriteTime | Select-Object -last 1
-        # install packages
-        choco install $chocoLatest -y
+        if($choco -eq "yes"){
+            # install choco
+            Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+            # install 7zip to perform extraction ahead.
+            choco install 7zip
+            # retrieves latest package backup
+            $chocoLatest = Get-ChildItem -path "$backupDir\packages*" | Sort-Object -Property LastWriteTime | Select-Object -last 1
+            # install packages
+            choco install $chocoLatest -y
+        }
         $appDirs.GetEnumerator() | ForEach-Object{
-            #place backup items 
+            # select latest backup .zip
             $restoreZip = Get-ChildItem -path "$backupDir\$($_.Key)*" | Sort-Object -Property LastWriteTime | Select-Object -last 1
-            #extracts zip in original locations
-            & $7z e $restorezip -o$_.Value
+            # kills running processes so that config restores can take effect
+            $proc = Get-Process -Name "$($_.Key)*"
+            if($proc){
+                $startApp = $proc.Path | Select-Object -First 1
+                $proc.Kill()
+                & $7z e $restorezip -o$_.Value
+                & $startApp
+            }else{
+                & $7z e $restorezip -o$_.Value
+            }
         }
     }else{
         Write-Output 'No action taken.'

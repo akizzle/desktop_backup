@@ -2,14 +2,17 @@
 MUST INSTALL 7zip prior to backing up & restoring. If choco param is present 7zip will be installed during the restore process.
 Run powershell in elevated mode.
 .EXAMPLE
-Runs script and performs disable/delete
+performs backup without backing up choco package list
 configBackups.ps1 -action backup
 .EXAMPLE
-Performs restore
+performs restore without installing chocolatey and packages.
 configBackups.ps1 -action restore
 .EXAMPLE
-If you have chocoalatey installed add the parameter -choco
+performs backup and exports choco package list
 configBackups.ps1 -action backup -choco yes
+.EXAMPLE
+performs restore and installs chocolatey along with all packages in the .config
+configBackups.ps1 -action restore -choco yes
 #>
 [CmdletBinding()]
 param
@@ -44,8 +47,8 @@ $fileDate = Get-Date -Format "MM.dd.yyyy_HH.mm.ss"
 $7z = "$env:ProgramFiles\7-zip\7z.exe"
 
 try{
-    if($action -eq 'backup'){
-        if($choco -eq 'yes'){
+    if($action -eq "backup"){
+        if($choco -eq "yes"){
             # choco package list backup
             # credit for export-chocolatey.ps1 goes to https://gist.github.com/alimbada/449ddf65b4ef9752eff3
             .\export-chocolatey.ps1 > "$backupDir\packages$fileDate.config"
@@ -65,7 +68,7 @@ try{
                 }
             }
         }
-    }elseif($action -eq 'restore'){
+    }elseif($action -eq "restore"){
         if($choco -eq "yes"){
             # install choco
             Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))

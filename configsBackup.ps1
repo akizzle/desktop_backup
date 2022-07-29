@@ -41,7 +41,6 @@ try{
         # choco package list backup
         # credit for export-chocolatey.ps1 goes to https://gist.github.com/alimbada/449ddf65b4ef9752eff3
         .\export-chocolatey.ps1 > "$backupDir\packages$fileDate.config"
-        pause
         if(Test-Path -path $7z){
             $appDirs.GetEnumerator() | ForEach-Object{
                 # deletes any backup zip older than 14 days.

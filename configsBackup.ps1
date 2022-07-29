@@ -25,11 +25,11 @@ param
 
 # specify applications & directories that you want backed up or restored.
 $appDirs = @{
-    streamDeck      = "$env:USERPROFILE\AppData\Roaming\Elgato\StreamDeck"
-    wowInterface    = "D:\Program Files (x86)\World of Warcraft\_retail_\Interface"
+    streamdeck      = "$env:USERPROFILE\AppData\Roaming\Elgato\StreamDeck"
+    wowinterface    = "D:\Program Files (x86)\World of Warcraft\_retail_\Interface"
     wowWTF          = "D:\Program Files (x86)\World of Warcraft\_retail_\WTF"
-    iCUE            = "$env:USERPROFILE\AppData\Roaming\Corsair\CUE Backup"
-    lgHub           = "$env:USERPROFILE\Appdata\Local\LGHUB"
+    icue            = "$env:USERPROFILE\AppData\Roaming\Corsair\CUE Backup"
+    lghub           = "$env:USERPROFILE\Appdata\Local\LGHUB"
     documents       = "$env:USERPROFILE\Documents"
     pictures        = "$env:USERPROFILE\Pictures"
     downloads       = "$env:USERPROFILE\Downloads"

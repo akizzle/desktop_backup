@@ -46,6 +46,40 @@ $fileDate = Get-Date -Format "MM.dd.yyyy_HH.mm.ss"
 # set 7zip executable
 $7z = "$env:ProgramFiles\7-zip\7z.exe"
 
+function Backup-Process {
+    param (
+        $appName,
+        $backupDir,
+        $appDir,
+        $action,
+        $sevenZip
+    )
+    $procs = Get-Process -Name "$appName*"
+    # set 7zip executable
+    if($procs){
+        $startApp = $procs.Path | Select-Object -First 1
+        $procs | Stop-Process -Force
+        if($action -eq "backup"){
+            & $7z a "$backupDir\$($appName)_$fileDate.zip" $appDir
+            & $startApp
+        }elseif($action -eq "restore"){
+            $restoreZip = Get-ChildItem -path "$backupDir\$appName*" | Sort-Object LastWriteTime | Select-Object -last 1
+            & $7z e $restorezip -o$appDir
+            & $startApp
+        }else{
+            Write-Output 'No action taken.'
+        }
+    }else{
+        if($action -eq "backup"){
+            & $7z a "$backupDir\$($appName)_$fileDate.zip" $appDir
+        }elseif($action -eq "restore"){
+            & $7z e $restorezip -o$appDir
+        }else{
+            Write-Output "No action taken."
+        }
+    }
+}
+
 try{
     if($action -eq "backup"){
         if($choco -eq "yes"){
@@ -56,15 +90,10 @@ try{
         if(Test-Path -path $7z){
             $appDirs.GetEnumerator() | ForEach-Object{
                 # deletes any backup zip older than 14 days.
-                Get-ChildItem -path "$backupDir\$($_.Key)*" | Where-Object {$_.LastWriteTime -gt (Get-Date).AddDays(-14)} | Remove-Item -Force -ErrorAction SilentlyContinue
+                Get-ChildItem -path "$backupDir\$($_.Key)*" | Where-Object {$_.LastWriteTime -lt (Get-Date).AddDays(-14)} | Remove-Item -Force -ErrorAction SilentlyContinue
                 # checks if path is present, if so perform backup
                 if(Test-Path $_.Value){
-                    if($_.Key -eq "lgHub"){
-                        # kills lghub processes due to file in use
-                        Get-Process | Where-Object {$_.Name -like 'lghub*'} | Stop-Process -Force
-                    }
-                # archives targetted directories
-                & $7z a "$backupDir\$($_.Key)_$fileDate.zip" $_.Value
+                    Backup-Process -appName $_.Key -backupDir $backupDir -appDir $_.Value -action $action -sevenZip $7z
                 }
             }
         }
@@ -81,16 +110,8 @@ try{
         }
         $appDirs.GetEnumerator() | ForEach-Object{
             # select latest backup .zip
-            $restoreZip = Get-ChildItem -path "$backupDir\$($_.Key)*" | Sort-Object LastWriteTime | Select-Object -last 1
-            # kills running processes so that config restores can take effect
-            $proc = Get-Process -Name "$($_.Key)*"
-            if($proc){
-                $startApp = $proc.Path | Select-Object -First 1
-                $proc.Kill()
-                & $7z e $restorezip -o$_.Value
-                & $startApp
-            }else{
-                & $7z e $restorezip -o$_.Value
+            if(Test-Path $_.Value){
+                Backup-Process -appName $_.Key -backupDir $backupDir -appDir $_.Value -action $action -sevenZip $7z
             }
         }
     }else{

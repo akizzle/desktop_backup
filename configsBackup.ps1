@@ -52,46 +52,6 @@ $scDir = "C:\ShadowCopy"
 # how long you want to keep backups for
 $retDate = (Get-Date).AddDays(-14)
 
-<#function Backup-Process {
-    param (
-        $appName,
-        $backupDir,
-        $appDir,
-        $action,
-        $sevenZip
-    )
-    $procs = Get-Process -Name "$appName*"
-    # set 7zip executable
-    if($procs){
-        $startApp = $procs.Path | Select-Object -First 1
-        $procs | Stop-Process -Force
-        if($action -eq "backup"){
-            & $7z a "$backupDir\$($appName)_$fileDate.zip" $appDir
-            & $startApp
-        }elseif($action -eq "restore"){
-            $restoreZip = Get-ChildItem -path "$backupDir\$appName*" | Sort-Object LastWriteTime | Select-Object -last 1
-            & $7z e $restorezip -o$appDir
-            & $startApp
-        }else{
-            Write-Output 'No action taken.'
-        }
-    }else{
-        if($action -eq "backup"){
-            $scDir = "C:\ShadowCopy"
-            Invoke-CimMethod -MethodName Create -ClassName Win32_ShadowCopy -Arguments @{ Volume= "C:\\" }
-            $sc = Get-CimInstance -ClassName win32_shadowcopy | Select-Object -Last 1
-            Invoke-Expression -Command "cmd /c mklink /d $scDir $($sc.DeviceObject)\" | Out-Null
-            & $7z a "$backupDir\$($appName)_$fileDate.zip" $appDir.Replace('C:\', $scDir)
-            vssadmin delete shadows /shadow="$($sc.ID)" /quiet 
-            Remove-Item $scDir
-        }elseif($action -eq "restore"){
-            & $7z e $restorezip -o$appDir
-        }else{
-            Write-Output "No action taken."
-        }
-    }
-#>
-
 try{
     if($action -eq "backup"){
         if($choco -eq "yes"){

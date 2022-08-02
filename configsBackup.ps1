@@ -60,6 +60,7 @@ try{
             .\export-chocolatey.ps1 > "$backupDir\packages$fileDate.config"
         }
         if(Test-Path -path $7z){
+            # creates SC, mounts to the $scDir directory, performs backup then cleans up the SC & $scDir folder
             Invoke-CimMethod -MethodName Create -ClassName Win32_ShadowCopy -Arguments @{Volume= "C:\\"}
             $sc = Get-CimInstance -ClassName Win32_ShadowCopy | Select-Object -Last 1
             Invoke-Expression -Command "cmd /c mklink /d $scDir $($sc.DeviceObject)\" | Out-Null
@@ -76,13 +77,11 @@ try{
         }
     }elseif($action -eq "restore"){
         if($choco -eq "yes"){
-            # install choco
+            # install choco & 7zip
             Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-            # install 7zip to perform extraction ahead.
             choco install 7zip
-            # retrieves latest package backup
+            # retrieves latest package backup & install
             $chocoLatest = Get-ChildItem -path "$backupDir\packages*" | Sort-Object LastWriteTime | Select-Object -last 1
-            # install packages
             choco install $chocoLatest -y
         }
         $appDirs.GetEnumerator() | ForEach-Object{
@@ -91,11 +90,9 @@ try{
                 $restoreZip = Get-ChildItem -path "$backupDir\$($_.Key)*" | Sort-Object LastWriteTime | Select-Object -last 1
                 # pulls processes running
                 $procs = Get-Process -Name "$($_.Key)*"
-                # if processes exist, kill for restore
+                # if processes exist, kill for restore & start application
                 if($procs){
-                    # selects first process to runa fter restore
                     $startApp = $procs.Path | Select-Object -First 1
-                    # kills processes
                     foreach ($proc in $procs){
                         $proc.kill()
                         # gives tasks enough time to kill before restore
@@ -103,7 +100,6 @@ try{
                     }
                     # extract archive to original directory, will overwrite existing files.
                     & $7z e $restorezip -o"$($_.Value)" -aoa
-                    # starts app after restore
                     & $startApp
                 }else{
                     # extract archive to original directory, will overwrite existing files.

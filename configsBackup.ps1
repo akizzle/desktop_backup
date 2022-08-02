@@ -39,14 +39,20 @@ $appDirs = @{
     desktop         = "$env:USERPROFILE\Desktop"
 } 
 
+$drives = ("C:\", "D:\")
+
 # specify backup dir
 $backupDir = "D:\Config Backups"
 # set backup date for files
 $fileDate = Get-Date -Format "MM.dd.yyyy_HH.mm.ss"
 # set 7zip executable
 $7z = "$env:ProgramFiles\7-zip\7z.exe"
+# set shadow copy mount location
+$scDir = "C:\ShadowCopy"
+# how long you want to keep backups for
+$retDate = (Get-Date).AddDays(-14)
 
-function Backup-Process {
+<#function Backup-Process {
     param (
         $appName,
         $backupDir,
@@ -71,14 +77,20 @@ function Backup-Process {
         }
     }else{
         if($action -eq "backup"){
-            & $7z a "$backupDir\$($appName)_$fileDate.zip" $appDir
+            $scDir = "C:\ShadowCopy"
+            Invoke-CimMethod -MethodName Create -ClassName Win32_ShadowCopy -Arguments @{ Volume= "C:\\" }
+            $sc = Get-CimInstance -ClassName win32_shadowcopy | Select-Object -Last 1
+            Invoke-Expression -Command "cmd /c mklink /d $scDir $($sc.DeviceObject)\" | Out-Null
+            & $7z a "$backupDir\$($appName)_$fileDate.zip" $appDir.Replace('C:\', $scDir)
+            vssadmin delete shadows /shadow="$($sc.ID)" /quiet 
+            Remove-Item $scDir
         }elseif($action -eq "restore"){
             & $7z e $restorezip -o$appDir
         }else{
             Write-Output "No action taken."
         }
     }
-}
+#>
 
 try{
     if($action -eq "backup"){
@@ -88,14 +100,20 @@ try{
             .\export-chocolatey.ps1 > "$backupDir\packages$fileDate.config"
         }
         if(Test-Path -path $7z){
+            Invoke-CimMethod -MethodName Create -ClassName Win32_ShadowCopy -Arguments @{Volume= "C:\\"}
+            $sc = Get-CimInstance -ClassName win32_shadowcopy | Select-Object -Last 1
+            Invoke-Expression -Command "cmd /c mklink /d $scDir $($sc.DeviceObject)\" | Out-Null
             $appDirs.GetEnumerator() | ForEach-Object{
                 # deletes any backup zip older than 14 days.
-                Get-ChildItem -path "$backupDir\$($_.Key)*" | Where-Object {$_.LastWriteTime -lt (Get-Date).AddDays(-14)} | Remove-Item -Force -ErrorAction SilentlyContinue
+                Get-ChildItem -path "$backupDir\$($_.Key)*" | Where-Object {$_.LastWriteTime -lt $retDate} | Remove-Item -Force -ErrorAction SilentlyContinue
                 # checks if path is present, if so perform backup
                 if(Test-Path $_.Value){
-                    Backup-Process -appName $_.Key -backupDir $backupDir -appDir $_.Value -action $action -sevenZip $7z
+                    & $7z a "$backupDir\$($_.Key)_$fileDate.zip" $_.Value.Replace('C:\', "$scDir\")
+                    #Backup-Process -appName $_.Key -backupDir $backupDir -appDir $_.Value -action $action -sevenZip $7z
                 }
             }
+            vssadmin delete shadows /shadow="$($sc.ID)" /quiet
+            Remove-Item $scDir
         }
     }elseif($action -eq "restore"){
         if($choco -eq "yes"){
@@ -109,9 +127,11 @@ try{
             choco install $chocoLatest -y
         }
         $appDirs.GetEnumerator() | ForEach-Object{
-            # select latest backup .zip
             if(Test-Path $_.Value){
-                Backup-Process -appName $_.Key -backupDir $backupDir -appDir $_.Value -action $action -sevenZip $7z
+                # select latest backup .zip
+                $restoreZip = Get-ChildItem -path "$backupDir\$($_.Key)*" | Sort-Object LastWriteTime | Select-Object -last 1
+                & $7z e $restorezip -o$_.Value
+                #Backup-Process -appName $_.Key -backupDir $backupDir -appDir $_.Value -action $action -sevenZip $7z
             }
         }
     }else{
@@ -121,4 +141,3 @@ try{
     Write-Error $_
     End
 }
-

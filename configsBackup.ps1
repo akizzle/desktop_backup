@@ -29,14 +29,14 @@ param
 # specify applications & directories that you want backed up or restored.
 $appDirs = @{
     streamdeck      = "$env:USERPROFILE\AppData\Roaming\Elgato\StreamDeck"
-    wowinterface    = "D:\Program Files (x86)\World of Warcraft\_retail_\Interface"
-    wowWTF          = "D:\Program Files (x86)\World of Warcraft\_retail_\WTF"
+    #wowinterface    = "D:\Program Files (x86)\World of Warcraft\_retail_\Interface"
+    #wowWTF          = "D:\Program Files (x86)\World of Warcraft\_retail_\WTF"
     icue            = "$env:USERPROFILE\AppData\Roaming\Corsair\CUE Backup"
     lghub           = "$env:USERPROFILE\Appdata\Local\LGHUB"
-    documents       = "$env:USERPROFILE\Documents"
-    pictures        = "$env:USERPROFILE\Pictures"
-    downloads       = "$env:USERPROFILE\Downloads"
-    desktop         = "$env:USERPROFILE\Desktop"
+    #documents       = "$env:USERPROFILE\Documents"
+    #pictures        = "$env:USERPROFILE\Pictures"
+    #downloads       = "$env:USERPROFILE\Downloads"
+    #desktop         = "$env:USERPROFILE\Desktop"
 } 
 
 $drives = ("C:\", "D:\")
@@ -101,7 +101,7 @@ try{
         }
         if(Test-Path -path $7z){
             Invoke-CimMethod -MethodName Create -ClassName Win32_ShadowCopy -Arguments @{Volume= "C:\\"}
-            $sc = Get-CimInstance -ClassName win32_shadowcopy | Select-Object -Last 1
+            $sc = Get-CimInstance -ClassName Win32_ShadowCopy | Select-Object -Last 1
             Invoke-Expression -Command "cmd /c mklink /d $scDir $($sc.DeviceObject)\" | Out-Null
             $appDirs.GetEnumerator() | ForEach-Object{
                 # deletes any backup zip older than 14 days.
@@ -109,7 +109,6 @@ try{
                 # checks if path is present, if so perform backup
                 if(Test-Path $_.Value){
                     & $7z a "$backupDir\$($_.Key)_$fileDate.zip" $_.Value.Replace('C:\', "$scDir\")
-                    #Backup-Process -appName $_.Key -backupDir $backupDir -appDir $_.Value -action $action -sevenZip $7z
                 }
             }
             vssadmin delete shadows /shadow="$($sc.ID)" /quiet
@@ -130,8 +129,26 @@ try{
             if(Test-Path $_.Value){
                 # select latest backup .zip
                 $restoreZip = Get-ChildItem -path "$backupDir\$($_.Key)*" | Sort-Object LastWriteTime | Select-Object -last 1
-                & $7z e $restorezip -o$_.Value
-                #Backup-Process -appName $_.Key -backupDir $backupDir -appDir $_.Value -action $action -sevenZip $7z
+                # pulls processes running
+                $procs = Get-Process -Name "$($_.Key)*"
+                # if processes exist, kill for restore
+                if($procs){
+                    # selects first process to runa fter restore
+                    $startApp = $procs.Path | Select-Object -First 1
+                    # kills processes
+                    foreach ($proc in $procs){
+                        $proc.kill()
+                        # gives tasks enough time to kill before restore
+                        Start-Sleep -Milliseconds 500
+                    }
+                    # extract archive to original directory, will overwrite existing files.
+                    & $7z e $restorezip -o"$($_.Value)" -aoa
+                    # starts app after restore
+                    & $startApp
+                }else{
+                    # extract archive to original directory, will overwrite existing files.
+                    & $7z e $restorezip -o"$($_.Value)" -aoa
+                }
             }
         }
     }else{

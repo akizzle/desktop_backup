@@ -99,11 +99,11 @@ try{
                         Start-Sleep -Milliseconds 500
                     }
                     # extract archive to original directory, will overwrite existing files.
-                    & $7z e $restorezip -o"$($_.Value)" -aoa
+                    & $7z x $restorezip -o"$($_.Value)" -aoa
                     & $startApp
                 }else{
                     # extract archive to original directory, will overwrite existing files.
-                    & $7z e $restorezip -o"$($_.Value)" -aoa
+                    & $7z x $restorezip -o"$($_.Value)" -aoa
                 }
             }
         }

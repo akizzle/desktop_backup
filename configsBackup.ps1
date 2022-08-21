@@ -37,6 +37,8 @@ $appDirs = @{
     pictures        = "$env:USERPROFILE\Pictures"
     downloads       = "$env:USERPROFILE\Downloads"
     desktop         = "$env:USERPROFILE\Desktop"
+    obssettings     = "$env:USERPROFILE\AppData\Roaming\obs-studio"
+    obsprofile      = "$env:USERPROFILE\AppData\Roaming\obs-studio\basic\profiles\Untitled"
 } 
 
 $drives = ("C:\", "D:\")
